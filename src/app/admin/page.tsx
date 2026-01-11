@@ -20,6 +20,7 @@ type EmployeeFullProfile = {
     skills_self: string[];
     challenges: string[];
     tools_interest: string[];
+    priority_improvement_areas: string[]; // Added new field
     additional_notes: string;
     name: string;
     email: string;
@@ -188,7 +189,9 @@ export default function AdminPage() {
 
     const [newSkill, setNewSkill] = useState("");
     const [newChallenge, setNewChallenge] = useState("");
+
     const [newTool, setNewTool] = useState("");
+    const [newPriorityArea, setNewPriorityArea] = useState(""); // New state for priority area
 
     const handleRemoveEmployee = (e: React.MouseEvent, empUid: string) => {
         e.preventDefault();
@@ -239,7 +242,7 @@ export default function AdminPage() {
         }
     };
 
-    const handleAddItem = async (field: "skills_self" | "challenges" | "tools_interest", value: string, setter: (s: string) => void) => {
+    const handleAddItem = async (field: "skills_self" | "challenges" | "tools_interest" | "priority_improvement_areas", value: string, setter: (s: string) => void) => {
         if (!selectedEmployeeId || !value.trim()) return;
 
         try {
@@ -266,7 +269,7 @@ export default function AdminPage() {
         }
     };
 
-    const handleRemoveItem = async (e: React.MouseEvent, field: "skills_self" | "challenges" | "tools_interest", value: string) => {
+    const handleRemoveItem = async (e: React.MouseEvent, field: "skills_self" | "challenges" | "tools_interest" | "priority_improvement_areas", value: string) => {
         if (e) {
             e.preventDefault();
             e.stopPropagation();
@@ -661,6 +664,8 @@ export default function AdminPage() {
                                         </div>
                                     </div>
 
+
+
                                     {/* User Notes */}
                                     <div>
                                         <h3 className="font-semibold text-white mb-2">Employee Notes</h3>
@@ -670,6 +675,47 @@ export default function AdminPage() {
                                     </div>
 
                                     <hr className="border-white/10" />
+
+                                    {/* Priority Improvement Areas */}
+                                    <div>
+                                        <h3 className="font-semibold text-white mb-4 flex items-center gap-2">
+                                            <span className="w-2 h-2 rounded-full bg-purple-400 shadow-[0_0_8px_rgba(168,85,247,0.8)]"></span>
+                                            Priority Improvement Areas
+                                        </h3>
+                                        <div className="flex flex-wrap gap-2 mb-4">
+                                            {(selectedEmployeeData.priority_improvement_areas || []).map(p => (
+                                                <div key={p} className="flex items-center bg-purple-900/20 border border-purple-500/20 rounded-lg px-3 py-1.5 transition-all hover:bg-purple-900/30">
+                                                    <span className="text-purple-300 text-xs font-medium mr-2">{p}</span>
+                                                    <button
+                                                        type="button"
+                                                        onClick={(e) => handleRemoveItem(e, "priority_improvement_areas", p)}
+                                                        className="text-purple-500 hover:text-red-400 focus:outline-none transition-colors"
+                                                        title="Remove area"
+                                                    >
+                                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                                        </svg>
+                                                    </button>
+                                                </div>
+                                            ))}
+                                            {(!selectedEmployeeData.priority_improvement_areas || selectedEmployeeData.priority_improvement_areas.length === 0) && <p className="text-gray-600 text-sm italic">No priority areas set</p>}
+                                        </div>
+                                        <div className="flex gap-2 max-w-sm">
+                                            <input
+                                                className="flex-1 bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-xs text-white focus:ring-1 focus:ring-purple-500/50 outline-none transition-all placeholder-gray-600"
+                                                placeholder="Add priority area..."
+                                                value={newPriorityArea}
+                                                onChange={e => setNewPriorityArea(e.target.value)}
+                                                onKeyDown={e => e.key === 'Enter' && handleAddItem("priority_improvement_areas", newPriorityArea, setNewPriorityArea)}
+                                            />
+                                            <button
+                                                onClick={() => handleAddItem("priority_improvement_areas", newPriorityArea, setNewPriorityArea)}
+                                                className="bg-purple-600/20 border border-purple-500/30 text-purple-400 px-3 py-1 rounded-lg text-xs hover:bg-purple-600/40 transition-all font-bold"
+                                            >
+                                                Add
+                                            </button>
+                                        </div>
+                                    </div>
 
                                     {/* Admin Private Notes */}
                                     <div className="bg-yellow-900/10 p-5 rounded-xl border border-yellow-500/10">
