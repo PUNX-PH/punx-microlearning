@@ -13,16 +13,16 @@ export default function AssessmentForm() {
     const [step, setStep] = useState(1);
     const [customTools, setCustomTools] = useState<string[]>([]);
     const [customChallenges, setCustomChallenges] = useState<string[]>([]);
+    const [customSkills, setCustomSkills] = useState<string[]>([]);
+    const [randomTools, setRandomTools] = useState<string[]>([]);
 
     const [formData, setFormData] = useState({
+        name: "",
         role: "",
         team: "",
-        cadence: "weekly",
         skills_self: [] as string[],
         challenges: [] as string[],
         tools_interest: [] as string[],
-        motivational_style: "",
-        learning_style: "",
         additional_notes: "",
     });
 
@@ -33,9 +33,36 @@ export default function AssessmentForm() {
         "Time Management",
         "Leadership",
         "Creative Thinking",
-        "Technical Skills",
-        "Presentation / Deck Building",
     ];
+
+    const teamRoleMap: Record<string, string[]> = {
+        "Activations and Events": [
+            "Activations Manager",
+            "Head of Activations",
+            "HCP & DS",
+            "Production Associate"
+        ],
+        "Content": [
+            "Activations Manager"
+        ],
+        "Digital Solution": [
+            "Web Developer",
+            "SEO Specialist",
+            "Game Developer"
+        ],
+        "Design & Creatives": [
+            "Production Lead",
+            "3D Animator",
+            "AI Artist",
+            "Lead AI Artist"
+        ],
+        "Shared Services Team": [
+            "Sales",
+            "Head of HR",
+            "HR Generalist",
+            "Accountant"
+        ]
+    };
 
     const challengesOptions = [
         "Too many tasks",
@@ -47,32 +74,63 @@ export default function AssessmentForm() {
         "Lack of focus",
     ];
 
-    const toolsOptions = [
-        "ChatGPT",
-        "MidJourney",
-        "Runway",
-        "Pika",
-        "Veo",
-        "Krea",
-        "Project management tools",
-        "Internal tools",
+    const teamToolsMap: Record<string, string[]> = {
+        "Activations and Events": [
+            "MidJourney / DALL·E 3",
+            "Runway Gen-2/3",
+            "Gamma",
+            "SketchUp / Blender"
+        ],
+        "Content": [
+            "ChatGPT / Claude",
+            "ElevenLabs",
+            "CapCut / Premiere AI",
+            "Ideogram"
+        ],
+        "Digital Solution": [
+            "GitHub Copilot",
+            "Cursor",
+            "v0.dev",
+            "Figma AI"
+        ],
+        "Design & Creatives": [
+            "MidJourney v6",
+            "Krea.ai",
+            "Magnific.ai",
+            "ComfyUI"
+        ],
+        "Shared Services Team": [
+            "ChatGPT",
+            "Notion AI",
+            "Canva Magic Studio",
+            "Excel AI / Formula Bot"
+        ]
+    };
+
+    const allToolsOptions = [
+        "Whisk", "Freepik", "Seedream", "Midjourney", "Nanobanana",
+        "Ideogram", "Adobe Firefly", "DZine", "Akool",
+        "Kling", "Google VEO", "Wan", "Dreamina", "OpenAI Sora",
+        "Lumalabs", "Higgsfield", "RunwayML", "HeyGen",
+        "ElevenLabs", "Suno.AI",
+        "Lupa AI", "Topaz", "Colourlab AI"
     ];
 
-    const motivationalOptions = [
-        "Inspirational",
-        "Tactical / How-to",
-        "Founder mindset",
-        "Productivity hacks",
-        "Direct & blunt",
-    ];
+    useEffect(() => {
+        const shuffled = [...allToolsOptions].sort(() => 0.5 - Math.random());
+        setRandomTools(shuffled.slice(0, 6));
+    }, []);
 
-    const learningOptions = [
-        "Bullet summaries",
-        "Step-by-step",
-        "Examples & use cases",
-        "Analogies",
-        "Mixed",
-    ];
+    const teamRelatedTools = (formData.team && teamToolsMap[formData.team]) ? teamToolsMap[formData.team] : [];
+
+    // Combine: Random tools + Team tools + Any currently selected tools (to ensure persistence) + Custom tools
+    // Note: customTools state might overlap with saved tools, but let's just make a comprehensive set.
+    const displayedTools = Array.from(new Set([
+        ...randomTools,
+        ...teamRelatedTools,
+        ...formData.tools_interest,
+        ...customTools
+    ]));
 
     useEffect(() => {
         if (user) {
@@ -82,24 +140,52 @@ export default function AssessmentForm() {
                     const snapshot = await get(child(dbRef, `employee_inputs/${user.uid}`));
                     if (snapshot.exists()) {
                         const data = snapshot.val();
+                        // Ensure we use saved name, or fall back to auth name if missing in DB
+                        // But strictly speaking, if snapshot exists, we take what's there.
+                        // If 'name' is missing in legacy data, we default to user.displayName.
+                        const savedName = data.name || user.displayName || "";
+
                         const savedTools = data.tools_interest || [];
                         const savedChallenges = data.challenges || [];
+                        const savedSkills = data.skills_self || [];
+
                         setFormData({
                             ...data,
-                            skills_self: data.skills_self || [],
+                            name: savedName,
+                            skills_self: savedSkills,
                             challenges: savedChallenges,
                             tools_interest: savedTools,
                         });
 
-                        // Identify custom tools
-                        const toolDefaults = new Set(toolsOptions);
-                        const customT = savedTools.filter((t: string) => !toolDefaults.has(t));
-                        setCustomTools(customT);
+                        // For tools: since options are dynamic, anything NOT in the current team's map *could* be custom.
+                        // However, strictly speaking, custom tools are user-entered. 
+                        // We will recalculate 'customTools' based on what is NOT in the specific team map selected at runtime?
+                        // Or better, just treat saved ones that aren't in the map as custom.
+                        // But wait, if they change teams, the map changes. 
+                        // Simplification for now: Just load them. We'll derive customTools in render or state.
+                        // Actually, let's keep the state approach for simplicity of adding new ones.
+
+                        // We need to know the team to filter "default" tools effectively.
+                        const team = data.team;
+                        const defaults = (team && teamToolsMap[team]) ? new Set(teamToolsMap[team]) : new Set();
+
+                        if (defaults.size > 0) {
+                            const customT = savedTools.filter((t: string) => !defaults.has(t));
+                            setCustomTools(customT);
+                        } else {
+                            // If no team yet, or unknown, maybe everything is custom? Or we just wait.
+                            setCustomTools(savedTools);
+                        }
 
                         // Identify custom challenges
                         const challengeDefaults = new Set(challengesOptions);
                         const customC = savedChallenges.filter((c: string) => !challengeDefaults.has(c));
                         setCustomChallenges(customC);
+
+                        // Identify custom skills
+                        const skillDefaults = new Set(skillsOptions);
+                        const customS = savedSkills.filter((s: string) => !skillDefaults.has(s));
+                        setCustomSkills(customS);
                     }
                 } catch (error) {
                     console.error("Error fetching data:", error);
@@ -112,6 +198,27 @@ export default function AssessmentForm() {
             setFetching(false);
         }
     }, [user]);
+
+    // Pre-fill name from auth if not loaded from DB yet/empty
+    useEffect(() => {
+        if (user && !formData.name) {
+            setFormData(prev => ({ ...prev, name: user.displayName || "" }));
+        }
+    }, [user]);
+
+    // Re-evaluate custom tools when team changes to ensure correct categorization
+    useEffect(() => {
+        if (formData.team && teamToolsMap[formData.team]) {
+            const defaults = new Set(teamToolsMap[formData.team]);
+            const allSelected = formData.tools_interest;
+            // Any selected tool that isn't in the new team's default list is effectively "custom" 
+            // or just a leftover selection. We'll add it to customTools so it doesn't disappear from view.
+            const newCustoms = allSelected.filter(t => !defaults.has(t));
+
+            // Merge with user-added custom tools (filtering duplicates)
+            setCustomTools(prev => Array.from(new Set([...prev, ...newCustoms])));
+        }
+    }, [formData.team]);
 
     const handleMultiSelect = (field: "skills_self" | "challenges" | "tools_interest", value: string, max?: number) => {
         setFormData((prev) => {
@@ -127,7 +234,16 @@ export default function AssessmentForm() {
     const handleAddCustomTool = (val: string) => {
         const value = val.trim();
         if (!value) return;
-        if (!toolsOptions.includes(value) && !customTools.includes(value)) {
+
+        // If it's visible effectively, just toggle selection
+        if (displayedTools.includes(value)) {
+            if (!formData.tools_interest.includes(value)) {
+                handleMultiSelect("tools_interest", value);
+            }
+            return;
+        }
+
+        if (!customTools.includes(value)) {
             setCustomTools(prev => [...prev, value]);
         }
         if (!formData.tools_interest.includes(value)) {
@@ -164,8 +280,32 @@ export default function AssessmentForm() {
         }
     };
 
+    const handleAddCustomSkill = (val: string) => {
+        const value = val.trim();
+        if (!value) return;
+        if (!skillsOptions.includes(value) && !customSkills.includes(value)) {
+            setCustomSkills(prev => [...prev, value]);
+        }
+        if (!formData.skills_self.includes(value)) {
+            handleMultiSelect("skills_self", value, 5);
+        }
+    };
+
+    const handleDeleteCustomSkill = (e: React.MouseEvent, item: string) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setCustomSkills(prev => prev.filter(s => s !== item));
+        if (formData.skills_self.includes(item)) {
+            handleMultiSelect("skills_self", item);
+        }
+    };
+
     const handleChange = (field: string, value: string) => {
-        setFormData((prev) => ({ ...prev, [field]: value }));
+        if (field === "team") {
+            setFormData((prev) => ({ ...prev, team: value, role: "" })); // Reset role when team changes
+        } else {
+            setFormData((prev) => ({ ...prev, [field]: value }));
+        }
     };
 
     const handleSubmit = async () => {
@@ -176,7 +316,8 @@ export default function AssessmentForm() {
             await set(ref(db, "employee_inputs/" + user.uid), {
                 ...formData,
                 email: user.email,
-                name: user.displayName,
+                // Do not overwrite name with user.displayName; use formData.name
+                name: formData.name || user.displayName,
                 updated_at: Date.now(),
             });
             router.push("/success");
@@ -191,113 +332,84 @@ export default function AssessmentForm() {
     if (fetching) return <div className="text-center p-10">Loading profile...</div>;
 
     return (
-        <div className="max-w-2xl mx-auto p-6 bg-white shadow-lg rounded-xl">
-            <h2 className="text-2xl font-bold mb-6 text-gray-800">
-                PUNX Learning Profile / {step === 5 ? "Review" : `Step ${step} of 5`}
+        <div className="max-w-3xl mx-auto p-8 gradient-border shadow-2xl relative z-10">
+            <h2 className="text-2xl font-bold mb-8 text-white flex items-center gap-3">
+                <span className="flex h-8 w-8 items-center justify-center rounded-full bg-cyan-500/10 text-cyan-400 text-sm font-bold border border-cyan-500/20">{step}</span>
+                PUNX Learning Profile <span className="text-gray-500 font-normal text-lg">/ {step === 5 ? "Review" : `Step ${step} of 5`}</span>
             </h2>
 
             {step === 1 && (
-                <div className="space-y-6">
-                    <h3 className="text-xl font-semibold text-gray-700">Basic Info</h3>
+                <div className="space-y-6 animate-fadeIn">
+                    <h3 className="text-xl font-semibold text-white mb-4">Basic Info</h3>
                     <div>
-                        <label className="block text-sm font-medium text-gray-700">Name</label>
-                        <input type="text" disabled value={user?.displayName || ""} className="mt-1 block w-full bg-gray-100 border-gray-300 rounded-md shadow-sm p-2" />
+                        <label className="block text-sm font-medium text-gray-300 mb-1">Name</label>
+                        <input
+                            type="text"
+                            className="mt-1 block w-full bg-white/5 border border-white/10 rounded-lg shadow-sm p-3 text-white placeholder-gray-500 focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 outline-none transition-all"
+                            value={formData.name}
+                            onChange={(e) => handleChange("name", e.target.value)}
+                            placeholder="Enter your full name"
+                        />
                     </div>
+
                     <div>
-                        <label className="block text-sm font-medium text-gray-700">Role</label>
+                        <label className="block text-sm font-medium text-gray-300 mb-1">Team</label>
                         <select
-                            className="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2 bg-white"
-                            value={formData.role}
-                            onChange={(e) => handleChange("role", e.target.value)}
-                        >
-                            <option value="">Select Role</option>
-                            <option value="Account Manager">Account Manager</option>
-                            <option value="Creative / Designer">Creative / Designer</option>
-                            <option value="Video / Studio">Video / Studio</option>
-                            <option value="Events / Activations">Events / Activations</option>
-                            <option value="Developer">Developer</option>
-                            <option value="Manager">Manager</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700">Team</label>
-                        <select
-                            className="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2 bg-white"
+                            className="mt-1 block w-full bg-white/5 border border-white/10 rounded-lg shadow-sm p-3 text-white focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 outline-none appearance-none"
                             value={formData.team}
                             onChange={(e) => handleChange("team", e.target.value)}
                         >
-                            <option value="">Select Team</option>
-                            <option value="Accounts">Accounts</option>
-                            <option value="Creative">Creative</option>
-                            <option value="Production">Production</option>
-                            <option value="Strategy">Strategy</option>
-                            <option value="Tech">Tech</option>
-                            <option value="Operations">Operations</option>
+                            <option value="" className="bg-[#121212] text-gray-400">Select Team</option>
+                            {Object.keys(teamRoleMap).map((t) => (
+                                <option key={t} value={t} className="bg-[#121212]">{t}</option>
+                            ))}
                         </select>
                     </div>
+
                     <div>
-                        <label className="block text-sm font-medium text-gray-700">Learning Cadence</label>
-                        <div className="mt-2 space-y-2">
-                            {["Weekly", "Bi-weekly"].map((opt) => (
-                                <label key={opt} className="items-center flex">
-                                    <input
-                                        type="radio"
-                                        name="cadence"
-                                        value={opt.toLowerCase()}
-                                        checked={formData.cadence === opt.toLowerCase()}
-                                        onChange={(e) => handleChange("cadence", e.target.value)}
-                                        className="h-4 w-4 text-indigo-600 border-gray-300"
-                                    />
-                                    <span className="ml-2 text-gray-700">{opt}</span>
-                                </label>
+                        <label className="block text-sm font-medium text-gray-300 mb-1">Role</label>
+                        <select
+                            className="mt-1 block w-full bg-white/5 border border-white/10 rounded-lg shadow-sm p-3 text-white focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 outline-none appearance-none disabled:opacity-50 disabled:cursor-not-allowed"
+                            value={formData.role}
+                            onChange={(e) => handleChange("role", e.target.value)}
+                            disabled={!formData.team}
+                        >
+                            <option value="" className="bg-[#121212] text-gray-400">{formData.team ? "Select Role" : "Select Team first"}</option>
+                            {formData.team && teamRoleMap[formData.team]?.map((r) => (
+                                <option key={r} value={r} className="bg-[#121212]">{r}</option>
                             ))}
-                        </div>
+                        </select>
                     </div>
                 </div>
             )}
 
             {step === 2 && (
-                <div className="space-y-6">
+                <div className="space-y-8 animate-fadeIn">
                     <div>
-                        <h3 className="text-xl font-semibold text-gray-700">Top 3 Skills to Improve</h3>
-                        <div className="mt-4 grid grid-cols-1 gap-2">
-                            {skillsOptions.map((opt) => (
-                                <label key={opt} className={`flex items-center p-3 border rounded-md cursor-pointer ${formData.skills_self.includes(opt) ? 'bg-indigo-50 border-indigo-500' : 'hover:bg-gray-50'}`}>
+                        <h3 className="text-xl font-semibold text-white mb-4">Skills to improve <span className="text-sm font-normal text-cyan-400 ml-2">(Max 5)</span></h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            {[...skillsOptions, ...customSkills].map((opt) => (
+                                <label key={opt} className={`group flex items-center justify-between p-4 border rounded-xl cursor-pointer transition-all ${formData.skills_self.includes(opt)
+                                    ? 'bg-cyan-500/10 border-cyan-500 shadow-[0_0_15px_rgba(0,255,255,0.15)]'
+                                    : 'bg-white/5 border-white/10 hover:border-white/20 hover:bg-white/10'
+                                    }`}>
+                                    <div className="flex items-center">
+                                        <div className={`w-5 h-5 rounded border flex items-center justify-center mr-3 transition-colors ${formData.skills_self.includes(opt) ? 'bg-cyan-500 border-cyan-500' : 'border-gray-500 group-hover:border-gray-400'
+                                            }`}>
+                                            {formData.skills_self.includes(opt) && <svg className="w-3 h-3 text-black" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>}
+                                        </div>
+                                        <span className={`text-sm ${formData.skills_self.includes(opt) ? 'text-white font-medium' : 'text-gray-300'}`}>{opt}</span>
+                                    </div>
                                     <input
                                         type="checkbox"
                                         checked={formData.skills_self.includes(opt)}
-                                        onChange={() => handleMultiSelect("skills_self", opt, 3)}
-                                        className="h-4 w-4 text-indigo-600 rounded"
+                                        onChange={() => handleMultiSelect("skills_self", opt, 5)}
+                                        className="hidden"
                                     />
-                                    <span className="ml-3 text-gray-700">{opt}</span>
-                                </label>
-                            ))}
-                        </div>
-                        <input
-                            placeholder="Other (type here)..."
-                            className="mt-2 w-full p-2 border rounded-md"
-                            onBlur={(e) => e.target.value && handleMultiSelect("skills_self", e.target.value, 3)}
-                        />
-                    </div>
-
-                    <div>
-                        <h3 className="text-xl font-semibold text-gray-700 mt-6">Current Challenges (Max 5)</h3>
-                        <div className="mt-4 grid grid-cols-1 gap-2">
-                            {[...challengesOptions, ...customChallenges].map((opt) => (
-                                <label key={opt} className={`flex items-center justify-between p-3 border rounded-md cursor-pointer ${formData.challenges.includes(opt) ? 'bg-indigo-50 border-indigo-500' : 'hover:bg-gray-50'}`}>
-                                    <div className="flex items-center">
-                                        <input
-                                            type="checkbox"
-                                            checked={formData.challenges.includes(opt)}
-                                            onChange={() => handleMultiSelect("challenges", opt, 5)}
-                                            className="h-4 w-4 text-indigo-600 rounded"
-                                        />
-                                        <span className="ml-3 text-gray-700">{opt}</span>
-                                    </div>
-                                    {customChallenges.includes(opt) && (
+                                    {customSkills.includes(opt) && (
                                         <button
-                                            onClick={(e) => handleDeleteCustomChallenge(e, opt)}
-                                            className="ml-2 text-gray-400 hover:text-red-500 p-1"
+                                            onClick={(e) => handleDeleteCustomSkill(e, opt)}
+                                            className="ml-2 text-gray-500 hover:text-red-400 p-1"
                                             title="Delete custom item"
                                         >
                                             <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -309,8 +421,60 @@ export default function AssessmentForm() {
                             ))}
                         </div>
                         <input
-                            placeholder="Other (type here and press Enter)..."
-                            className="mt-2 w-full p-2 border rounded-md"
+                            placeholder="Add other skill (Type & Enter)..."
+                            className="mt-3 w-full bg-white/5 border border-white/10 rounded-lg p-3 text-white placeholder-gray-500 focus:ring-1 focus:ring-cyan-500 outline-none text-sm hover:bg-white/10 transition-colors"
+                            onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                    e.preventDefault();
+                                    handleAddCustomSkill(e.currentTarget.value);
+                                    e.currentTarget.value = "";
+                                }
+                            }}
+                            onBlur={(e) => {
+                                e.target.value && handleAddCustomSkill(e.target.value);
+                                e.target.value = "";
+                            }}
+                        />
+                    </div>
+
+                    <div>
+                        <h3 className="text-xl font-semibold text-white mb-4 mt-8">Current Challenges <span className="text-sm font-normal text-cyan-400 ml-2">(Max 5)</span></h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            {[...challengesOptions, ...customChallenges].map((opt) => (
+                                <label key={opt} className={`group flex items-center justify-between p-4 border rounded-xl cursor-pointer transition-all ${formData.challenges.includes(opt)
+                                    ? 'bg-cyan-500/10 border-cyan-500 shadow-[0_0_15px_rgba(0,255,255,0.15)]'
+                                    : 'bg-white/5 border-white/10 hover:border-white/20 hover:bg-white/10'
+                                    }`}>
+                                    <div className="flex items-center">
+                                        <div className={`w-5 h-5 rounded border flex items-center justify-center mr-3 transition-colors ${formData.challenges.includes(opt) ? 'bg-cyan-500 border-cyan-500' : 'border-gray-500 group-hover:border-gray-400'
+                                            }`}>
+                                            {formData.challenges.includes(opt) && <svg className="w-3 h-3 text-black" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>}
+                                        </div>
+                                        <span className={`text-sm ${formData.challenges.includes(opt) ? 'text-white font-medium' : 'text-gray-300'}`}>{opt}</span>
+                                    </div>
+                                    <input
+                                        type="checkbox"
+                                        checked={formData.challenges.includes(opt)}
+                                        onChange={() => handleMultiSelect("challenges", opt, 5)}
+                                        className="hidden"
+                                    />
+                                    {customChallenges.includes(opt) && (
+                                        <button
+                                            onClick={(e) => handleDeleteCustomChallenge(e, opt)}
+                                            className="ml-2 text-gray-500 hover:text-red-400 p-1"
+                                            title="Delete custom item"
+                                        >
+                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                            </svg>
+                                        </button>
+                                    )}
+                                </label>
+                            ))}
+                        </div>
+                        <input
+                            placeholder="Add other challenge (Type & Enter)..."
+                            className="mt-3 w-full bg-white/5 border border-white/10 rounded-lg p-3 text-white placeholder-gray-500 focus:ring-1 focus:ring-cyan-500 outline-none text-sm hover:bg-white/10 transition-colors"
                             onKeyDown={(e) => {
                                 if (e.key === 'Enter') {
                                     e.preventDefault();
@@ -326,153 +490,144 @@ export default function AssessmentForm() {
                     </div>
                 </div>
             )}
-
-            {step === 3 && (
-                <div className="space-y-6">
-                    <h3 className="text-xl font-semibold text-gray-700">Tools to Learn</h3>
-                    <div className="grid grid-cols-2 gap-3">
-                        {[...toolsOptions, ...customTools].map((opt) => (
-                            <label key={opt} className={`flex items-center justify-between p-3 border rounded-md cursor-pointer ${formData.tools_interest.includes(opt) ? 'bg-indigo-50 border-indigo-500' : 'hover:bg-gray-50'}`}>
-                                <div className="flex items-center">
+            {
+                step === 3 && (
+                    <div className="space-y-6 animate-fadeIn">
+                        <h3 className="text-xl font-semibold text-white">Tools to Learn</h3>
+                        <p className="text-gray-400 text-sm italic mb-4">Showing random discovery tools + team recommendations. Refreshes on reload.</p>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            {displayedTools.map((opt) => (
+                                <label key={opt} className={`group flex items-center justify-between p-3 border rounded-xl cursor-pointer transition-all ${formData.tools_interest.includes(opt)
+                                    ? 'bg-cyan-500/10 border-cyan-500 shadow-[0_0_15px_rgba(0,255,255,0.1)]'
+                                    : 'bg-white/5 border-white/10 hover:border-white/20 hover:bg-white/10'
+                                    }`}>
+                                    <div className="flex items-center">
+                                        <div className={`w-4 h-4 rounded border flex items-center justify-center mr-3 transition-colors ${formData.tools_interest.includes(opt) ? 'bg-cyan-500 border-cyan-500' : 'border-gray-500 group-hover:border-gray-400'
+                                            }`}>
+                                            {formData.tools_interest.includes(opt) && <svg className="w-3 h-3 text-black" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>}
+                                        </div>
+                                        <span className={`text-sm ${formData.tools_interest.includes(opt) ? 'text-white font-medium' : 'text-gray-300'} break-all`}>{opt}</span>
+                                    </div>
                                     <input
                                         type="checkbox"
                                         checked={formData.tools_interest.includes(opt)}
                                         onChange={() => handleMultiSelect("tools_interest", opt)}
-                                        className="h-4 w-4 text-indigo-600 rounded"
+                                        className="hidden"
                                     />
-                                    <span className="ml-3 text-gray-700 break-all">{opt}</span>
-                                </div>
-                                {customTools.includes(opt) && (
-                                    <button
-                                        onClick={(e) => handleDeleteCustomTool(e, opt)}
-                                        className="ml-2 text-gray-400 hover:text-red-500 p-1"
-                                        title="Delete custom item"
-                                    >
-                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                        </svg>
-                                    </button>
-                                )}
-                            </label>
-                        ))}
-                    </div>
-                    <input
-                        placeholder="Other (type here and press Enter)..."
-                        className="mt-2 w-full p-2 border rounded-md"
-                        onKeyDown={(e) => {
-                            if (e.key === 'Enter') {
-                                e.preventDefault();
-                                handleAddCustomTool(e.currentTarget.value);
-                                e.currentTarget.value = "";
-                            }
-                        }}
-                        onBlur={(e) => {
-                            handleAddCustomTool(e.target.value);
-                            e.target.value = "";
-                        }}
-                    />
-                </div>
-            )}
-
-            {step === 4 && (
-                <div className="space-y-6">
-                    <div>
-                        <h3 className="text-xl font-semibold text-gray-700">Motivation Style</h3>
-                        <div className="mt-2 space-y-2">
-                            {motivationalOptions.map((opt) => (
-                                <label key={opt} className="flex items-center">
-                                    <input
-                                        type="radio"
-                                        name="motivation"
-                                        value={opt}
-                                        checked={formData.motivational_style === opt}
-                                        onChange={(e) => handleChange("motivational_style", e.target.value)}
-                                        className="h-4 w-4 text-indigo-600"
-                                    />
-                                    <span className="ml-2 text-gray-700">{opt}</span>
+                                    {customTools.includes(opt) && !allToolsOptions.includes(opt) && !teamRelatedTools.includes(opt) && (
+                                        <button
+                                            onClick={(e) => handleDeleteCustomTool(e, opt)}
+                                            className="ml-2 text-gray-500 hover:text-red-400 p-1"
+                                            title="Delete custom item"
+                                        >
+                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                            </svg>
+                                        </button>
+                                    )}
                                 </label>
                             ))}
                         </div>
-                    </div>
-
-                    <div>
-                        <h3 className="text-xl font-semibold text-gray-700 mt-6">Learning Style</h3>
-                        <div className="mt-2 space-y-2">
-                            {learningOptions.map((opt) => (
-                                <label key={opt} className="flex items-center">
-                                    <input
-                                        type="radio"
-                                        name="learning"
-                                        value={opt}
-                                        checked={formData.learning_style === opt}
-                                        onChange={(e) => handleChange("learning_style", e.target.value)}
-                                        className="h-4 w-4 text-indigo-600"
-                                    />
-                                    <span className="ml-2 text-gray-700">{opt}</span>
-                                </label>
-                            ))}
-                        </div>
-                    </div>
-
-                    <div>
-                        <h3 className="text-xl font-semibold text-gray-700 mt-6">Optional Notes</h3>
-                        <textarea
-                            className="w-full mt-2 p-3 border border-gray-300 rounded-md shadow-sm h-24"
-                            placeholder="Anything specific you want to focus on..."
-                            value={formData.additional_notes}
-                            onChange={(e) => handleChange("additional_notes", e.target.value)}
-                            maxLength={300}
+                        <input
+                            placeholder="Add other tool (Type & Enter)..."
+                            className="mt-3 w-full bg-white/5 border border-white/10 rounded-lg p-3 text-white placeholder-gray-500 focus:ring-1 focus:ring-cyan-500 outline-none text-sm hover:bg-white/10 transition-colors"
+                            onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                    e.preventDefault();
+                                    handleAddCustomTool(e.currentTarget.value);
+                                    e.currentTarget.value = "";
+                                }
+                            }}
+                            onBlur={(e) => {
+                                handleAddCustomTool(e.target.value);
+                                e.target.value = "";
+                            }}
                         />
                     </div>
-                </div>
-            )}
+                )
+            }
 
-            {step === 5 && (
-                <div className="space-y-6">
-                    <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-                        <div className="flex justify-between items-center mb-2">
-                            <h3 className="font-bold text-gray-800">Basic Info</h3>
-                            <button onClick={() => setStep(1)} className="text-sm text-indigo-600 hover:text-indigo-800 font-medium">Edit</button>
+            {
+                step === 4 && (
+                    <div className="space-y-6 animate-fadeIn">
+                        <div>
+                            <h3 className="text-xl font-semibold text-white">Final Thoughts</h3>
+                            <p className="text-sm text-gray-400 mb-4">Any specific requests, learning goals, or notes?</p>
+                            <textarea
+                                className="w-full bg-white/5 border border-white/10 rounded-xl p-4 text-white placeholder-gray-600 focus:ring-2 focus:ring-cyan-500 outline-none h-40 resize-none"
+                                placeholder="Type your notes here..."
+                                value={formData.additional_notes}
+                                onChange={(e) => handleChange("additional_notes", e.target.value)}
+                                maxLength={500}
+                            />
                         </div>
-                        <p className="text-gray-700 text-sm"><span className="font-medium">Role:</span> {formData.role || "Not selected"}</p>
-                        <p className="text-gray-700 text-sm"><span className="font-medium">Team:</span> {formData.team || "Not selected"}</p>
-                        <p className="text-gray-700 text-sm"><span className="font-medium">Cadence:</span> {formData.cadence}</p>
                     </div>
+                )
+            }
 
-                    <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-                        <div className="flex justify-between items-center mb-2">
-                            <h3 className="font-bold text-gray-800">Skills & Challenges</h3>
-                            <button onClick={() => setStep(2)} className="text-sm text-indigo-600 hover:text-indigo-800 font-medium">Edit</button>
+            {
+                step === 5 && (
+                    <div className="space-y-6 animate-fadeIn">
+                        <div className="bg-white/5 p-5 rounded-xl border border-white/10">
+                            <div className="flex justify-between items-center mb-3">
+                                <h3 className="font-bold text-white text-lg">Basic Info</h3>
+                                <button onClick={() => setStep(1)} className="text-sm text-cyan-400 hover:text-cyan-300 font-medium">Edit</button>
+                            </div>
+                            <p className="text-gray-300 text-sm mb-1"><span className="font-semibold text-gray-500 w-20 inline-block">Role:</span> {formData.role || "Not selected"}</p>
+                            <p className="text-gray-300 text-sm"><span className="font-semibold text-gray-500 w-20 inline-block">Team:</span> {formData.team || "Not selected"}</p>
                         </div>
-                        <p className="text-gray-700 text-sm mb-1"><span className="font-medium">Skills:</span> {formData.skills_self.join(", ") || "None"}</p>
-                        <p className="text-gray-700 text-sm"><span className="font-medium">Challenges:</span> {formData.challenges.join(", ") || "None"}</p>
-                    </div>
 
-                    <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-                        <div className="flex justify-between items-center mb-2">
-                            <h3 className="font-bold text-gray-800">Tools</h3>
-                            <button onClick={() => setStep(3)} className="text-sm text-indigo-600 hover:text-indigo-800 font-medium">Edit</button>
+                        <div className="bg-white/5 p-5 rounded-xl border border-white/10">
+                            <div className="flex justify-between items-center mb-3">
+                                <h3 className="font-bold text-white text-lg">Skills & Challenges</h3>
+                                <button onClick={() => setStep(2)} className="text-sm text-cyan-400 hover:text-cyan-300 font-medium">Edit</button>
+                            </div>
+                            <div className="mb-3">
+                                <span className="block text-gray-500 text-xs uppercase font-bold tracking-wider mb-2">Skills</span>
+                                <div className="flex flex-wrap gap-2">
+                                    {formData.skills_self.length > 0 ? formData.skills_self.map(s => (
+                                        <span key={s} className="bg-cyan-900/40 border border-cyan-500/30 text-cyan-200 text-xs px-2 py-1 rounded-md">{s}</span>
+                                    )) : <span className="text-gray-500 italic text-sm">None</span>}
+                                </div>
+                            </div>
+                            <div>
+                                <span className="block text-gray-500 text-xs uppercase font-bold tracking-wider mb-2">Challenges</span>
+                                <div className="flex flex-wrap gap-2">
+                                    {formData.challenges.length > 0 ? formData.challenges.map(c => (
+                                        <span key={c} className="bg-red-900/20 border border-red-500/20 text-red-200 text-xs px-2 py-1 rounded-md">{c}</span>
+                                    )) : <span className="text-gray-500 italic text-sm">None</span>}
+                                </div>
+                            </div>
                         </div>
-                        <p className="text-gray-700 text-sm">{formData.tools_interest.join(", ") || "None"}</p>
-                    </div>
 
-                    <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-                        <div className="flex justify-between items-center mb-2">
-                            <h3 className="font-bold text-gray-800">Preferences</h3>
-                            <button onClick={() => setStep(4)} className="text-sm text-indigo-600 hover:text-indigo-800 font-medium">Edit</button>
+                        <div className="bg-white/5 p-5 rounded-xl border border-white/10">
+                            <div className="flex justify-between items-center mb-3">
+                                <h3 className="font-bold text-white text-lg">Tools</h3>
+                                <button onClick={() => setStep(3)} className="text-sm text-cyan-400 hover:text-cyan-300 font-medium">Edit</button>
+                            </div>
+                            <div className="flex flex-wrap gap-2">
+                                {formData.tools_interest.length > 0 ? formData.tools_interest.map(t => (
+                                    <span key={t} className="bg-gray-800 border border-gray-700 text-gray-300 text-xs px-2 py-1 rounded-md">{t}</span>
+                                )) : <span className="text-gray-500 italic text-sm">None selected</span>}
+                            </div>
                         </div>
-                        <p className="text-gray-700 text-sm mb-1"><span className="font-medium">Motivation:</span> {formData.motivational_style || "Not selected"}</p>
-                        <p className="text-gray-700 text-sm mb-1"><span className="font-medium">Learning Style:</span> {formData.learning_style || "Not selected"}</p>
-                        <p className="text-gray-700 text-sm"><span className="font-medium">Notes:</span> {formData.additional_notes || "None"}</p>
-                    </div>
-                </div>
-            )}
 
-            <div className="mt-8 flex justify-between">
+                        <div className="bg-white/5 p-5 rounded-xl border border-white/10">
+                            <div className="flex justify-between items-center mb-3">
+                                <h3 className="font-bold text-white text-lg">Notes</h3>
+                                <button onClick={() => setStep(4)} className="text-sm text-cyan-400 hover:text-cyan-300 font-medium">Edit</button>
+                            </div>
+                            <p className="text-gray-300 text-sm whitespace-pre-wrap">{formData.additional_notes || <span className="italic text-gray-600">No additional notes provided.</span>}</p>
+                        </div>
+                    </div>
+                )
+            }
+
+            <div className="mt-8 flex justify-between pt-6 border-t border-white/10">
                 {step > 1 ? (
                     <button
                         onClick={() => setStep(step - 1)}
-                        className="px-6 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
+                        className="px-6 py-3 border border-white/10 rounded-xl text-gray-400 hover:bg-white/5 hover:text-white transition-colors text-sm font-medium"
                     >
                         Back
                     </button>
@@ -481,17 +636,17 @@ export default function AssessmentForm() {
                 {step < 5 ? (
                     <button
                         onClick={() => setStep(step + 1)}
-                        className="px-6 py-2 bg-black text-white rounded-md hover:bg-gray-800"
+                        className="px-8 py-3 bg-cyan-400 text-black rounded-xl hover:bg-cyan-300 shadow-[0_0_20px_rgba(0,255,255,0.3)] hover:shadow-[0_0_30px_rgba(0,255,255,0.5)] transition-all text-sm font-bold"
                     >
-                        {step === 4 ? "Review" : "Next"}
+                        Next Step
                     </button>
                 ) : (
                     <button
                         onClick={handleSubmit}
                         disabled={loading}
-                        className="px-6 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 disabled:opacity-50"
+                        className="px-8 py-3 bg-cyan-400 text-black rounded-xl hover:bg-cyan-300 shadow-[0_0_20px_rgba(0,255,255,0.3)] hover:shadow-[0_0_30px_rgba(0,255,255,0.5)] transition-all text-sm font-bold disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                        {loading ? "Confirm & Submit" : "Confirm & Submit"}
+                        {loading ? "Submitting..." : "Complete Profile"}
                     </button>
                 )}
             </div>

@@ -1,1 +1,76 @@
 @import "tailwindcss";
+
+:root {
+    --background: #050505;
+    --foreground: #ffffff;
+    --primary: #00FFFF;
+    /* Cyan/Teal accent */
+    --primary-dark: #00cccc;
+    --surface: #121212;
+    --surface-highlight: #1E1E1E;
+}
+
+@theme {
+    --color-punk-black: #050505;
+    --color-punk-surface: #121212;
+    --color-punk-cyan: #00FFFF;
+    --color-punk-cyan-dim: rgba(0, 255, 255, 0.1);
+}
+
+body {
+    background-color: var(--background);
+    color: var(--foreground);
+    font-family: Arial, Helvetica, sans-serif;
+}
+
+/* Glassmorphism Utilities */
+.glass {
+    background: rgba(18, 18, 18, 0.7);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.glass-card {
+    background: rgba(30, 30, 30, 0.6);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+/* Gradient Utilities */
+.gradient-border {
+    position: relative;
+    background: linear-gradient(#121212, #121212) padding-box,
+        linear-gradient(to right, #00BFFF, #9333EA) border-box;
+    /* Cyan to Purple */
+    border: 2px solid transparent;
+    border-radius: 1rem;
+    /* rounded-2xl */
+}
+
+.text-gradient {
+    background: linear-gradient(to right, #00BFFF, #9333EA);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    color: transparent;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+    width: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: #0a0a0a;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #333;
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #00FFFF;
+}

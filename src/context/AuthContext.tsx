@@ -8,8 +8,8 @@ import { useRouter } from "next/navigation";
 interface AuthContextType {
     user: User | null;
     loading: boolean;
-    login: () => Promise<void>;
-    logout: () => Promise<void>;
+    login: (redirectPath?: string) => Promise<void>;
+    logout: (redirectPath?: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -27,19 +27,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return () => unsubscribe();
     }, []);
 
-    const login = async () => {
+    const login = async (redirectPath: string = "/assessment") => {
         try {
             await signInWithPopup(auth, googleProvider);
-            router.push("/assessment");
+            router.push(redirectPath);
         } catch (error) {
             console.error("Login failed", error);
         }
     };
 
-    const logout = async () => {
+    const logout = async (redirectPath: string = "/") => {
         try {
             await signOut(auth);
-            router.push("/");
+            router.push(redirectPath);
         } catch (error) {
             console.error("Logout failed", error);
         }
