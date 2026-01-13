@@ -12,16 +12,16 @@ export default function AssessmentForm() {
     const [fetching, setFetching] = useState(true);
     const [step, setStep] = useState(1);
     const [customTools, setCustomTools] = useState<string[]>([]);
-    const [customChallenges, setCustomChallenges] = useState<string[]>([]);
+
     const [customSkills, setCustomSkills] = useState<string[]>([]);
-    const [randomTools, setRandomTools] = useState<string[]>([]);
+
 
     const [formData, setFormData] = useState({
         name: "",
         role: "",
         team: "",
         skills_self: [] as string[],
-        challenges: [] as string[],
+
         tools_interest: [] as string[],
         additional_notes: "",
     });
@@ -64,47 +64,52 @@ export default function AssessmentForm() {
         ]
     };
 
-    const challengesOptions = [
-        "Too many tasks",
-        "Tight deadlines",
-        "Unclear requirements",
-        "Tool knowledge gap",
-        "Stress / burnout",
-        "Client pressure",
-        "Lack of focus",
-    ];
 
-    const teamToolsMap: Record<string, string[]> = {
-        "Activations and Events": [
-            "MidJourney / DALL·E 3",
-            "Runway Gen-2/3",
-            "Gamma",
-            "SketchUp / Blender"
-        ],
-        "Content": [
-            "ChatGPT / Claude",
-            "ElevenLabs",
-            "CapCut / Premiere AI",
-            "Ideogram"
-        ],
-        "Digital Solution": [
-            "GitHub Copilot",
-            "Cursor",
-            "v0.dev",
-            "Figma AI"
-        ],
-        "Design & Creatives": [
-            "MidJourney v6",
-            "Krea.ai",
-            "Magnific.ai",
-            "ComfyUI"
-        ],
-        "Shared Services Team": [
-            "ChatGPT",
-            "Notion AI",
-            "Canva Magic Studio",
-            "Excel AI / Formula Bot"
-        ]
+
+    // Helper to get tools based on Team + Role
+    const getToolsForRole = (team: string, role: string): string[] => {
+        if (!team || !role) return [];
+
+        // Handle specific cases or full role map
+        const key = `${team}|${role}`;
+
+        // ACTIVATIONS & EVENTS
+        if (team === "Activations and Events") {
+            if (role === "Activations Manager") return ["ChatGPT", "Notion AI", "Canva AI", "Jasper", "Typeform AI", "Synthesia / HeyGen"];
+            if (role === "Head of Activations") return ["ChatGPT", "Power BI with Copilot", "Tableau AI", "Notion AI", "Miro AI", "Salesforce Einstein"];
+            if (role === "HCP & DS") return ["ChatGPT", "Perplexity AI", "Power BI Copilot", "Tableau AI", "Excel Copilot", "Otter.ai"];
+            if (role === "Production Associate") return ["ChatGPT", "Notion AI", "ClickUp AI", "Descript", "Canva AI", "Google Workspace Copilot"];
+        }
+
+        // CONTENT
+        if (team === "Content") {
+            if (role === "Activations Manager") return ["ChatGPT", "Jasper", "GrammarlyGO", "Canva AI", "Descript", "Hootsuite AI"];
+        }
+
+        // DIGITAL SOLUTION
+        if (team === "Digital Solution") {
+            if (role === "Web Developer") return ["GitHub Copilot", "Codeium", "ChatGPT", "Postman AI", "Figma AI", "Snyk AI"];
+            if (role === "SEO Specialist") return ["SEMrush AI", "Ahrefs AI", "Surfer SEO", "Frase", "ChatGPT", "Clearscope"];
+            if (role === "Game Developer") return ["GitHub Copilot", "ChatGPT", "Unity ML-Agents", "Promethean AI", "Runway", "Leonardo AI"];
+        }
+
+        // DESIGN & CREATIVES
+        if (team === "Design & Creatives") {
+            if (role === "Production Lead") return ["Notion AI", "ChatGPT", "Frame.io", "ClickUp AI", "Miro AI", "Power BI"];
+            if (role === "3D Animator") return ["Blender AI add-ons", "Cascadeur", "DeepMotion", "Runway", "Kaedim3D", "ChatGPT"];
+            if (role === "AI Artist") return ["Midjourney", "Stable Diffusion", "Leonardo AI", "Runway", "Photoshop Firefly", "Topaz AI"];
+            if (role === "Lead AI Artist") return ["ComfyUI", "Stable Diffusion ControlNet", "Runway Gen-3", "Kaiber", "ChatGPT", "Notion AI"];
+        }
+
+        // SHARED SERVICES TEAM
+        if (team === "Shared Services Team") {
+            if (role === "Sales") return ["HubSpot AI", "Salesforce Einstein", "ChatGPT", "Gong AI", "Jasper Sales", "CrystalKnows AI"];
+            if (role === "Head of HR") return ["ChatGPT", "LinkedIn Talent AI", "BambooHR AI", "Power BI Copilot", "HireVue", "Notion AI"];
+            if (role === "HR Generalist") return ["ChatGPT", "Pymetrics", "Paradox AI", "Otter.ai", "GrammarlyGO", "Zoho People AI"];
+            if (role === "Accountant") return ["QuickBooks AI", "Xero AI", "Vic.ai", "Excel Copilot", "Dext", "ChatGPT"];
+        }
+
+        return [];
     };
 
     const allToolsOptions = [
@@ -116,18 +121,14 @@ export default function AssessmentForm() {
         "Lupa AI", "Topaz", "Colourlab AI"
     ];
 
-    useEffect(() => {
-        const shuffled = [...allToolsOptions].sort(() => 0.5 - Math.random());
-        setRandomTools(shuffled.slice(0, 6));
-    }, []);
 
-    const teamRelatedTools = (formData.team && teamToolsMap[formData.team]) ? teamToolsMap[formData.team] : [];
+
+    const roleRelatedTools = getToolsForRole(formData.team, formData.role);
 
     // Combine: Random tools + Team tools + Any currently selected tools (to ensure persistence) + Custom tools
     // Note: customTools state might overlap with saved tools, but let's just make a comprehensive set.
     const displayedTools = Array.from(new Set([
-        ...randomTools,
-        ...teamRelatedTools,
+        ...roleRelatedTools,
         ...formData.tools_interest,
         ...customTools
     ]));
@@ -146,14 +147,13 @@ export default function AssessmentForm() {
                         const savedName = data.name || user.displayName || "";
 
                         const savedTools = data.tools_interest || [];
-                        const savedChallenges = data.challenges || [];
+
                         const savedSkills = data.skills_self || [];
 
                         setFormData({
                             ...data,
                             name: savedName,
                             skills_self: savedSkills,
-                            challenges: savedChallenges,
                             tools_interest: savedTools,
                         });
 
@@ -165,9 +165,10 @@ export default function AssessmentForm() {
                         // Simplification for now: Just load them. We'll derive customTools in render or state.
                         // Actually, let's keep the state approach for simplicity of adding new ones.
 
-                        // We need to know the team to filter "default" tools effectively.
+                        // We need to know the team/role to filter "default" tools effectively.
                         const team = data.team;
-                        const defaults = (team && teamToolsMap[team]) ? new Set(teamToolsMap[team]) : new Set();
+                        const role = data.role;
+                        const defaults = new Set(getToolsForRole(team, role));
 
                         if (defaults.size > 0) {
                             const customT = savedTools.filter((t: string) => !defaults.has(t));
@@ -177,10 +178,7 @@ export default function AssessmentForm() {
                             setCustomTools(savedTools);
                         }
 
-                        // Identify custom challenges
-                        const challengeDefaults = new Set(challengesOptions);
-                        const customC = savedChallenges.filter((c: string) => !challengeDefaults.has(c));
-                        setCustomChallenges(customC);
+
 
                         // Identify custom skills
                         const skillDefaults = new Set(skillsOptions);
@@ -206,21 +204,20 @@ export default function AssessmentForm() {
         }
     }, [user]);
 
-    // Re-evaluate custom tools when team changes to ensure correct categorization
+    // Re-evaluate custom tools when role/team changes to ensure correct categorization
     useEffect(() => {
-        if (formData.team && teamToolsMap[formData.team]) {
-            const defaults = new Set(teamToolsMap[formData.team]);
-            const allSelected = formData.tools_interest;
-            // Any selected tool that isn't in the new team's default list is effectively "custom" 
-            // or just a leftover selection. We'll add it to customTools so it doesn't disappear from view.
-            const newCustoms = allSelected.filter(t => !defaults.has(t));
+        const defaults = new Set(getToolsForRole(formData.team, formData.role));
+        const allSelected = formData.tools_interest;
+        // Any selected tool that isn't in the new role's default list is effectively "custom" 
+        // or just a leftover selection. We'll add it to customTools so it doesn't disappear from view.
+        const newCustoms = allSelected.filter(t => !defaults.has(t));
 
-            // Merge with user-added custom tools (filtering duplicates)
-            setCustomTools(prev => Array.from(new Set([...prev, ...newCustoms])));
-        }
-    }, [formData.team]);
+        // Merge with user-added custom tools (filtering duplicates)
+        setCustomTools(prev => Array.from(new Set([...prev, ...newCustoms])));
 
-    const handleMultiSelect = (field: "skills_self" | "challenges" | "tools_interest", value: string, max?: number) => {
+    }, [formData.team, formData.role]);
+
+    const handleMultiSelect = (field: "skills_self" | "tools_interest", value: string, max?: number) => {
         setFormData((prev) => {
             const current = prev[field];
             if (current.includes(value)) {
@@ -260,25 +257,7 @@ export default function AssessmentForm() {
         }
     };
 
-    const handleAddCustomChallenge = (val: string) => {
-        const value = val.trim();
-        if (!value) return;
-        if (!challengesOptions.includes(value) && !customChallenges.includes(value)) {
-            setCustomChallenges(prev => [...prev, value]);
-        }
-        if (!formData.challenges.includes(value)) {
-            handleMultiSelect("challenges", value, 5);
-        }
-    };
 
-    const handleDeleteCustomChallenge = (e: React.MouseEvent, item: string) => {
-        e.preventDefault();
-        e.stopPropagation();
-        setCustomChallenges(prev => prev.filter(c => c !== item));
-        if (formData.challenges.includes(item)) {
-            handleMultiSelect("challenges", item);
-        }
-    };
 
     const handleAddCustomSkill = (val: string) => {
         const value = val.trim();
@@ -437,64 +416,14 @@ export default function AssessmentForm() {
                         />
                     </div>
 
-                    <div>
-                        <h3 className="text-xl font-semibold text-white mb-4 mt-8">Current Challenges <span className="text-sm font-normal text-cyan-400 ml-2">(Max 5)</span></h3>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                            {[...challengesOptions, ...customChallenges].map((opt) => (
-                                <label key={opt} className={`group flex items-center justify-between p-4 border rounded-xl cursor-pointer transition-all ${formData.challenges.includes(opt)
-                                    ? 'bg-cyan-500/10 border-cyan-500 shadow-[0_0_15px_rgba(0,255,255,0.15)]'
-                                    : 'bg-white/5 border-white/10 hover:border-white/20 hover:bg-white/10'
-                                    }`}>
-                                    <div className="flex items-center">
-                                        <div className={`w-5 h-5 rounded border flex items-center justify-center mr-3 transition-colors ${formData.challenges.includes(opt) ? 'bg-cyan-500 border-cyan-500' : 'border-gray-500 group-hover:border-gray-400'
-                                            }`}>
-                                            {formData.challenges.includes(opt) && <svg className="w-3 h-3 text-black" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>}
-                                        </div>
-                                        <span className={`text-sm ${formData.challenges.includes(opt) ? 'text-white font-medium' : 'text-gray-300'}`}>{opt}</span>
-                                    </div>
-                                    <input
-                                        type="checkbox"
-                                        checked={formData.challenges.includes(opt)}
-                                        onChange={() => handleMultiSelect("challenges", opt, 5)}
-                                        className="hidden"
-                                    />
-                                    {customChallenges.includes(opt) && (
-                                        <button
-                                            onClick={(e) => handleDeleteCustomChallenge(e, opt)}
-                                            className="ml-2 text-gray-500 hover:text-red-400 p-1"
-                                            title="Delete custom item"
-                                        >
-                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                            </svg>
-                                        </button>
-                                    )}
-                                </label>
-                            ))}
-                        </div>
-                        <input
-                            placeholder="Add other challenge (Type & Enter)..."
-                            className="mt-3 w-full bg-white/5 border border-white/10 rounded-lg p-3 text-white placeholder-gray-500 focus:ring-1 focus:ring-cyan-500 outline-none text-sm hover:bg-white/10 transition-colors"
-                            onKeyDown={(e) => {
-                                if (e.key === 'Enter') {
-                                    e.preventDefault();
-                                    handleAddCustomChallenge(e.currentTarget.value);
-                                    e.currentTarget.value = "";
-                                }
-                            }}
-                            onBlur={(e) => {
-                                handleAddCustomChallenge(e.target.value);
-                                e.target.value = "";
-                            }}
-                        />
-                    </div>
+
                 </div>
             )}
             {
                 step === 3 && (
                     <div className="space-y-6 animate-fadeIn">
                         <h3 className="text-xl font-semibold text-white">Tools to Learn</h3>
-                        <p className="text-gray-400 text-sm italic mb-4">Showing random discovery tools + team recommendations. Refreshes on reload.</p>
+
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                             {displayedTools.map((opt) => (
                                 <label key={opt} className={`group flex items-center justify-between p-3 border rounded-xl cursor-pointer transition-all ${formData.tools_interest.includes(opt)
@@ -514,7 +443,7 @@ export default function AssessmentForm() {
                                         onChange={() => handleMultiSelect("tools_interest", opt)}
                                         className="hidden"
                                     />
-                                    {customTools.includes(opt) && !allToolsOptions.includes(opt) && !teamRelatedTools.includes(opt) && (
+                                    {customTools.includes(opt) && !allToolsOptions.includes(opt) && !roleRelatedTools.includes(opt) && (
                                         <button
                                             onClick={(e) => handleDeleteCustomTool(e, opt)}
                                             className="ml-2 text-gray-500 hover:text-red-400 p-1"
@@ -590,14 +519,7 @@ export default function AssessmentForm() {
                                     )) : <span className="text-gray-500 italic text-sm">None</span>}
                                 </div>
                             </div>
-                            <div>
-                                <span className="block text-gray-500 text-xs uppercase font-bold tracking-wider mb-2">Challenges</span>
-                                <div className="flex flex-wrap gap-2">
-                                    {formData.challenges.length > 0 ? formData.challenges.map(c => (
-                                        <span key={c} className="bg-red-900/20 border border-red-500/20 text-red-200 text-xs px-2 py-1 rounded-md">{c}</span>
-                                    )) : <span className="text-gray-500 italic text-sm">None</span>}
-                                </div>
-                            </div>
+
                         </div>
 
                         <div className="bg-white/5 p-5 rounded-xl border border-white/10">

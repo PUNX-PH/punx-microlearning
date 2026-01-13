@@ -18,13 +18,17 @@ type EmployeeFullProfile = {
     team: string;
     cadence: string;
     skills_self: string[];
-    challenges: string[];
+
     tools_interest: string[];
     priority_improvement_areas: string[]; // Added new field
     additional_notes: string;
     name: string;
     email: string;
     updated_at: number;
+    metrics?: {
+        totalEmailsOpened?: number;
+    };
+    lastActiveAt?: number;
 };
 
 export default function AdminPage() {
@@ -188,7 +192,7 @@ export default function AdminPage() {
     };
 
     const [newSkill, setNewSkill] = useState("");
-    const [newChallenge, setNewChallenge] = useState("");
+
 
     const [newTool, setNewTool] = useState("");
     const [newPriorityArea, setNewPriorityArea] = useState(""); // New state for priority area
@@ -242,7 +246,7 @@ export default function AdminPage() {
         }
     };
 
-    const handleAddItem = async (field: "skills_self" | "challenges" | "tools_interest" | "priority_improvement_areas", value: string, setter: (s: string) => void) => {
+    const handleAddItem = async (field: "skills_self" | "tools_interest" | "priority_improvement_areas", value: string, setter: (s: string) => void) => {
         if (!selectedEmployeeId || !value.trim()) return;
 
         try {
@@ -269,7 +273,7 @@ export default function AdminPage() {
         }
     };
 
-    const handleRemoveItem = async (e: React.MouseEvent, field: "skills_self" | "challenges" | "tools_interest" | "priority_improvement_areas", value: string) => {
+    const handleRemoveItem = async (e: React.MouseEvent, field: "skills_self" | "tools_interest" | "priority_improvement_areas", value: string) => {
         if (e) {
             e.preventDefault();
             e.stopPropagation();
@@ -534,10 +538,27 @@ export default function AdminPage() {
 
                                 <div className="p-6 space-y-8 flex-1">
                                     {/* Stats Grid */}
-                                    <div className="grid grid-cols-1 gap-4">
+                                    <div className="grid grid-cols-2 gap-4">
                                         <div className="bg-white/5 p-4 rounded-xl border border-white/5">
                                             <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Team</p>
                                             <p className="font-semibold text-white tracking-wide">{selectedEmployeeData.team || "N/A"}</p>
+                                        </div>
+                                        <div className="bg-gradient-to-br from-cyan-900/20 to-cyan-500/10 p-4 rounded-xl border border-cyan-500/20">
+                                            <p className="text-xs font-bold text-cyan-400 uppercase tracking-wider mb-1 flex items-center gap-1">
+                                                <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" viewBox="0 0 20 20" fill="currentColor">
+                                                    <path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z" />
+                                                    <path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z" />
+                                                </svg>
+                                                Emails Opened
+                                            </p>
+                                            <p className="text-2xl font-bold text-white tracking-wide">
+                                                {selectedEmployeeData.metrics?.totalEmailsOpened || 0}
+                                            </p>
+                                            {selectedEmployeeData.lastActiveAt && (
+                                                <p className="text-[10px] text-cyan-300/60 mt-1">
+                                                    Last active: {new Date(selectedEmployeeData.lastActiveAt).toLocaleDateString()}
+                                                </p>
+                                            )}
                                         </div>
                                     </div>
 
@@ -582,45 +603,7 @@ export default function AdminPage() {
                                                 </button>
                                             </div>
                                         </div>
-                                        <div>
-                                            <h3 className="font-semibold text-white mb-4 flex items-center gap-2">
-                                                <span className="w-2 h-2 rounded-full bg-red-400 shadow-[0_0_8px_rgba(248,113,113,0.8)]"></span>
-                                                Current Challenges
-                                            </h3>
-                                            <div className="flex flex-wrap gap-2 mb-4">
-                                                {(selectedEmployeeData.challenges || []).map(c => (
-                                                    <div key={c} className="flex items-center bg-red-900/20 border border-red-500/20 rounded-lg px-3 py-1.5 transition-all hover:bg-red-900/30">
-                                                        <span className="text-red-300 text-xs font-medium mr-2">{c}</span>
-                                                        <button
-                                                            type="button"
-                                                            onClick={(e) => handleRemoveItem(e, "challenges", c)}
-                                                            className="text-red-600 hover:text-red-400 focus:outline-none transition-colors"
-                                                            title="Remove challenge"
-                                                        >
-                                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                                            </svg>
-                                                        </button>
-                                                    </div>
-                                                ))}
-                                                {(!selectedEmployeeData.challenges || selectedEmployeeData.challenges.length === 0) && <p className="text-gray-600 text-sm italic">None selected</p>}
-                                            </div>
-                                            <div className="flex gap-2">
-                                                <input
-                                                    className="flex-1 bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-xs text-white focus:ring-1 focus:ring-red-500/50 outline-none transition-all placeholder-gray-600"
-                                                    placeholder="Add challenge..."
-                                                    value={newChallenge}
-                                                    onChange={e => setNewChallenge(e.target.value)}
-                                                    onKeyDown={e => e.key === 'Enter' && handleAddItem("challenges", newChallenge, setNewChallenge)}
-                                                />
-                                                <button
-                                                    onClick={() => handleAddItem("challenges", newChallenge, setNewChallenge)}
-                                                    className="bg-red-600/20 border border-red-500/30 text-red-400 px-3 py-1 rounded-lg text-xs hover:bg-red-600/40 transition-all font-bold"
-                                                >
-                                                    Add
-                                                </button>
-                                            </div>
-                                        </div>
+
                                     </div>
 
                                     {/* Tools */}
