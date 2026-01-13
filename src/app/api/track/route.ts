@@ -15,27 +15,36 @@ export async function GET(request: NextRequest) {
 
     if (employeeId) {
         try {
-            // 2. Update Firebase
             const updates: any = {};
             const basePath = `employee_inputs/${employeeId}`;
+            let shouldIncrementGlobal = true;
 
-            // Update global open count
-            updates[`${basePath}/metrics/totalEmailsOpened`] = increment(1);
-            updates[`${basePath}/lastActiveAt`] = serverTimestamp();
-
-            // If we have an email ID, track specific email open
             if (emailId) {
+                // Check if already opened to prevent double counting in global metrics
+                const dbRef = ref(db);
+                const statusSnapshot = await get(child(dbRef, `${basePath}/emailHistory/${emailId}/status`));
+
+                if (statusSnapshot.exists() && statusSnapshot.val() === "opened") {
+                    shouldIncrementGlobal = false;
+                }
+
+                // Track specific email details
                 updates[`${basePath}/emailHistory/${emailId}/status`] = "opened";
                 updates[`${basePath}/emailHistory/${emailId}/openedAt`] = serverTimestamp();
-                // Optional: Count opens for this specific email
                 updates[`${basePath}/emailHistory/${emailId}/openCount`] = increment(1);
             }
 
+            // Only increment global count if it's a new unique email open (or if we can't track uniqueness)
+            if (shouldIncrementGlobal) {
+                updates[`${basePath}/metrics/totalEmailsOpened`] = increment(1);
+            }
+
+            updates[`${basePath}/lastActiveAt`] = serverTimestamp();
+
             await update(ref(db), updates);
-            console.log(`[Tracking] Successfully updated Firebase for ${employeeId}`);
+            console.log(`[Tracking] Successfully updated Firebase for ${employeeId}. Unique: ${shouldIncrementGlobal}`);
         } catch (error) {
             console.error("[Tracking] Error updating Firebase:", error);
-            // Continue to return the image even if logging fails
         }
     }
 
