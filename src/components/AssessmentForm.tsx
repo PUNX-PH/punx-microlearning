@@ -33,6 +33,8 @@ export default function AssessmentForm() {
         "Time Management",
         "Leadership",
         "Creative Thinking",
+        "Strategic Planning",
+        "Decision Making",
     ];
 
     const teamRoleMap: Record<string, string[]> = {
@@ -61,6 +63,10 @@ export default function AssessmentForm() {
             "Head of HR",
             "HR Generalist",
             "Accountant"
+        ],
+        "Management": [
+            "CEO",
+            "Director"
         ]
     };
 
@@ -107,6 +113,12 @@ export default function AssessmentForm() {
             if (role === "Head of HR") return ["ChatGPT", "LinkedIn Talent AI", "BambooHR AI", "Power BI Copilot", "HireVue", "Notion AI"];
             if (role === "HR Generalist") return ["ChatGPT", "Pymetrics", "Paradox AI", "Otter.ai", "GrammarlyGO", "Zoho People AI"];
             if (role === "Accountant") return ["QuickBooks AI", "Xero AI", "Vic.ai", "Excel Copilot", "Dext", "ChatGPT"];
+        }
+
+        // MANAGEMENT
+        if (team === "Management") {
+            if (role === "CEO") return ["ChatGPT", "Perplexity AI", "Power BI Copilot", "Gamma", "Beautiful.ai", "Otter.ai"];
+            if (role === "Director") return ["ChatGPT", "Notion AI", "ClickUp AI", "Power BI Copilot", "Otter.ai", "Fellow.app"];
         }
 
         return [];
